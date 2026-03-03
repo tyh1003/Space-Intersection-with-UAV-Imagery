@@ -1,97 +1,62 @@
-# HW3 - Space Intersection (空間前方交會)
+# Space Intersection with UAV Imagery (Photogrammetry, MATLAB)
 
-本專案為 **攝影測量作業三**，重點是利用多張 UAV 航線影像進行 **空間前方交會 (Space Intersection, SI)** 的模擬計算，並透過隨機誤差與平差方法進行三維地面點坐標的估值與精度分析。
+## Overview
+This project implements a complete Space Intersection (SI) pipeline for estimating 3D ground point coordinates from multi-view UAV imagery. It includes forward image measurement simulation using collinearity equations, Gaussian noise injection, iterative least-squares adjustment, covariance-based uncertainty estimation, and gross-error testing.
 
----
+## What This Project Does
+Given:
+- UAV camera positions and orientations per image
+- Image measurements (or simulated image points)
 
-## 📂 專案內容
+It estimates:
+- 3D ground point coordinates (X, Y, Z)
+- Posterior unit weight standard deviation (σ₀)
+- Parameter covariance matrix Σxx
+- 2D/3D uncertainty visualization (error ellipse / error ellipsoid)
+- Robustness under gross errors (3σ, 5σ, 10σ, 100σ scenarios)
 
-- `HW3.pdf`  
-  作業報告，包含背景說明、公式推導、程式流程與成果分析。
+## Methodology
 
-- `HW space intersection.pdf`  
-  作業說明投影片，詳細列出計算案例與所需步驟。
+### 1) Image Point Generation (Collinearity Equations)
+- Compute ideal image coordinates (xp, yp) from collinearity equations
+- Used as reference “truth” for simulation
 
-- `HW3.m`  
-  MATLAB 程式碼，執行像點坐標真值計算、隨機誤差模擬與空間前方交會平差。
+### 2) Measurement Noise Simulation
+- Generate N(0, σ) Gaussian noise (σ = 20 μm)
+- Validate distribution using summary statistics and histogram
 
-- `N(0,σ)隨機亂數分布表.txt`  
-  產生的常態分布隨機誤差數據。
+### 3) Space Intersection via Iterative Least Squares
+- Linearize observation equations and solve normal equations:
+  V = AX − L  
+  N = AᵀPA,  U = AᵀPL,  NX = U
+- Solvers used:
+  - Cholesky factorization
+  - Gauss-Jordan elimination
+- Iterate until convergence:
+  max |Δ| ≤ 0.002 m
 
-- `隨機1-3D誤差橢球.tif`、`隨機2-3D誤差橢球.tif`、`隨機亂數分布直方圖.tif`  
-  MATLAB 繪製成果，包括誤差橢球、誤差橢圓與亂數直方圖。
+### 4) Uncertainty Quantification
+- Compute σ₀ (posterior unit weight std.)
+- Derive Σxx and perform eigen-decomposition
+- Visualize:
+  - 3D error ellipsoid (λ₁, λ₂, λ₃)
+  - 2D error ellipse (λ₁, λ₂)
 
-- `pho.xlsx`, `pho2.xlsx`, `UAV_Coordinates_and_Angles.xlsx`  
-  UAV 航線座標、姿態角以及像點模擬數據。
+### 5) Gross Error Injection and Detection
+- Inject outliers into selected image measurements
+- Compare convergence behavior and residual patterns
+- Use standardized residuals to identify potential gross errors
 
----
+## Repository Structure
+- `HW3.m` — main MATLAB implementation
+- `pho.xlsx`, `pho2.xlsx`, `UAV_Coordinates_and_Angles.xlsx` — UAV trajectory, orientation, and measurement inputs
+- `*.tif` — error ellipsoid/ellipse plots and histogram outputs
+- `HW3.pdf` — report with derivations and analysis
 
-## 🎯 作業目的
+## Notes on Reproducibility
+- Input spreadsheets define the test configuration (UAV pose + observations)
+- Output figures summarize distribution checks and uncertainty geometry
 
-1. 學習利用 **共線式** 與 **隨機誤差模擬** 進行影像坐標生成。  
-2. 撰寫程式產生 **N(0,σ)** 高斯亂數，並加入像點觀測值作為誤差。  
-3. 進行 **三維空間前方交會**，解算地面點 P 的三維坐標。  
-4. 透過 **間接平差** 與 **誤差橢球/橢圓** 進行成果精度評估。  
-5. 模擬粗差對成果的影響，並嘗試 **偵錯與剔錯**。  
-
----
-
-## 🛠️ 計算方法
-
-### 1. 像點真值計算
-- 利用共線式 (Collinearity Equations) 計算各 UAV 航線影像上 P 點的理論像點坐標 (xp, yp)。
-
-### 2. 隨機誤差生成
-- 撰寫程式產生 **≥744 個 N(0,σ)** 隨機數 (σ = 20 µm)。  
-- 驗證其均值與標準差是否符合期望，並繪製直方圖檢查分布特性。  
-
-### 3. 空間前方交會
-- 將帶誤差的像點坐標輸入，透過觀測方程式線性化，建立最小二乘法方程組： 
-``` 
-V = AX - L  
-N = AᵀPA  
-U = AᵀPL  
-NX = U  
-```
-- 使用 Cholesky 分解與 Gauss-Jordan 消去法進行數值求解。  
-- 透過迭代計算，直到誤差量收斂 (ε ≤ 0.002 m)。  
-
-### 4. 誤差分析
-- 計算後驗單位權中誤差 σ₀。  
-- 推導協變方陣 ΣXX，並進行特徵值分解以繪製誤差橢球。  
-- 在 2D 與 3D 模式下，分別表示地面點的誤差範圍。  
-
-### 5. 粗差模擬與剔錯
-- 對部分影像像點加入粗差 (3σ, 5σ, 10σ, 100σ)。  
-- 比較收斂情況與改正數，並透過標準化殘差檢查粗差。  
-
----
-
-## 📊 成果輸出
-
-1. **像坐標真值表**  
- - 記錄各 UAV 影像的 (xp, yp)。  
-
-2. **隨機數表與直方圖**  
- - 至少 744 個 N(0,σ) 隨機數，並繪製直方圖。  
-
-3. **前方交會成果**  
- - 每次迭代的 (dXP, dYP, dZP) 與最大誤差。  
- - 收斂後的三維地面坐標與真誤差 ε。  
-
-4. **誤差橢球/橢圓**  
- - 三維誤差橢球 (λ₁, λ₂, λ₃)。  
- - 二維誤差橢圓 (λ₁, λ₂)。  
-
-5. **粗差測試結果**  
- - 加錯後是否能偵測與剔除粗差。  
- - 不同案例下成果精度比較。  
-
----
-
-## 📑 參考文獻
-
-1. 課本：尤瑞哲，《基礎測量平差法》，2018，第5.6節。  
-2. 課堂簡報《HW: Space Intersection》。  
-3. HackMD 筆記與 ChatGPT 輔助解釋。  
-
+## References
+- 尤瑞哲，《基礎測量平差法》，2018，第5.6節
+- Course slides: Space Intersection
